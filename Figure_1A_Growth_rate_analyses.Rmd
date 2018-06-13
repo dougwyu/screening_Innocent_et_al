@@ -15,8 +15,7 @@ library(ggthemes)
 library(lattice)
 library(lme4)
 library(sjPlot)
-library(envDocument)
-env_doc("table", git = FALSE)
+sessionInfo()
 ```
 
 ```{r}
