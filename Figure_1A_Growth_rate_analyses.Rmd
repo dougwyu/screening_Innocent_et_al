@@ -1,0 +1,242 @@
+---
+title: "Figure 1A.  Analyses of Growth rate experiment using Softbugs isolated from the environment"
+author: "Douglas Yu"
+date: "05 June 2018"
+output: html_document
+---
+## Packages
+```{r, message=FALSE}
+# rm(list=ls())
+library(tidyverse)
+library(readxl)
+library(knitr)
+library(RColorBrewer)
+library(ggthemes)
+library(lattice)
+library(lme4)
+library(sjPlot)
+library(envDocument)
+env_doc("table", git = FALSE)
+```
+
+```{r}
+datafile <- "Figure_1A_Growth_rate_analyses_DataSheet_20180302.xlsx"
+sheet_strepto <- "data_table_Strep"
+sheet_softbugs <- "data_table_Sb"
+```
+
+## Dataset 1:  _Streptomyces_
+```{r Streptomyces dataset}
+assay1 <- read_excel(datafile, sheet_strepto, na = "NA")
+tbl_df(assay1) # should have 492 rows and 7 cols
+assay1 <- assay1 %>% dplyr::select(-Input.order)
+assay1 # should have 492 rows and 6 cols
+```
+
+## Dataset 2:  Softbugs (our shorthand term for _Non-antibiotic-producers_)
+```{r Softbugs dataset}
+assay2 <- read_excel(datafile, sheet_softbugs, na = "NA")
+tbl_df(assay2) # should have 483 rows and 10 cols
+assay2 <- assay2 %>% dplyr::select(-Input.order)
+assay2$Inv.strain <- assay2$Inv.strain + 10 # to differentiate numbering from Strepto samples
+assay2 <- assay2 %>% mutate(Plate = ifelse(Plate == 4, 1, ifelse(Plate == 5, 2, ifelse(Plate == 6, 3, NA))))
+assay2 # should have 483 rows and 6 cols
+```
+
+## Assay 3:  Combined 
+```{r assay3, message=FALSE, warning=FALSE}
+assay3 <- bind_rows(assay1, assay2)
+assay3 <- assay3 %>% dplyr::select(Ps.genotype, Invader, Inv.strain, Ps.strain, Plate, Invasion.score) %>% arrange(Ps.genotype, Invader, Inv.strain, Ps.strain, Plate)
+assay3 <- assay3 %>% filter(!is.na(Invasion.score))
+assay3$Ps.genotype <- as.factor(assay3$Ps.genotype)
+assay3$Ps.genotype <- fct_relevel(assay3$Ps.genotype, "Control", "Ps1", "Ps2")
+assay3$Inv.strain <- as_factor(as.character(assay3$Inv.strain))
+assay3$Inv.strain_shape <- if_else(assay3$Inv.strain == "18", "2", "16") 
+assay3$Invader <- as_factor(assay3$Invader) %>% fct_relevel("Soft_bug", "Streptomyces")
+assay3$Ps.strain <- as_factor(assay3$Ps.strain)
+assay3$Plate <- as_factor(as.character(assay3$Plate))
+tbl_df(assay3) # 975 rows and 7 cols
+```
+
+
+Create crosstabs to see experimental design
+```{r}
+assay4 <- assay3 %>% dplyr::filter(Ps.strain != "Control") 
+assay4$Ps.strain <- droplevels(assay4$Ps.strain)
+xtabs(~ Inv.strain + Ps.strain + Plate, assay4)
+rm(assay4)
+
+assay5 <- assay3 %>% dplyr::filter(Ps.strain == "Control")
+assay5$Ps.strain <- droplevels(assay5$Ps.strain)
+xtabs(~ Inv.strain + Ps.strain + Plate, assay5)
+rm(assay5)
+```
+
+sample sizes
+```{r}
+assay1 %>% count(Invader, Ps.genotype)
+assay2 %>% count(Invader, Ps.genotype)
+assay3 %>% count(Invader, Ps.genotype, Plate)
+```
+To read these tables:
+
+1. We infused the media with antibiotics from 17 _Pseudonocardia_ lines that had been collected from different ant colonies (A-S), plus a non-infused control media. There are potentially genetic differences among these vertically transmitted lineages, so we call them:  Ps.strain
+
+2. We measured growth rates of 10 strains of _Streptomyces_ (1-10) and 10 strains of Softbugs (11-20). These are invading strains so we call them:  Inv.strain. 
+
+3. Each of the (17 \* 20 =) 340 combinations of Ps.strain and Inv.strain was repeated 3 times for a total sample size of (340 \* 3 =) 1020 treatment inoculations and 60 control inoculations, but some colonies could not be scored due to difficulties in reading colony area, leaving us with (170 + 292 =) 462 _Streptomyces_ inoculations and (149 + 304 =) 453 Softbugs inoculations. 462 + 453 = 915 total treatment inoculations + (20 \* 3 =) 60 control inoculations = 975 total inoculations.
+
+4. Thus, the experiment is fully crossed but somewhat imbalanced at the end. 
+
+5. (510 - 462 =) 48 Streptomyces inoculations and (510 - 453 =) 57 Softbug inoculations could not be scored. Note that we did score cases where there was no growth. 
+
+```{r stripchart of results}
+colorvec <- brewer.pal(3,"RdBu")
+colorvec <- c(colorvec[3], colorvec[1], colorvec[2])
+
+p <- ggplot(assay3, aes(x = Ps.genotype:Invader, y = Invasion.score)) 
+
+# truncated y-axis version for publication
+(q <- p + ylim(0, 2.5) 
+	+ geom_boxplot(size = .5, outlier.shape = NA, width = 0.3, aes(fill = assay3$Invader)) 
+	+ geom_jitter(width = 0.05, cex = .8, aes(shape = assay3$Inv.strain_shape)) 
+	+ scale_shape_manual(values = c(16, 2)) 
+	+ labs(y = expression("Growth score:  Mean colony area " ~ (cm^{2}))) 
+	# + scale_fill_brewer(type = "qual", palette = "Set3") # alternative color set
+	+ scale_fill_manual(values = colorvec) 
+    + theme(axis.title.y = element_text(size = 14), 
+  			axis.title.x = element_blank(), 
+  			legend.position='none', 
+  			panel.background = element_rect(fill = "white"), 
+  			panel.grid.major.y = element_line(colour = "grey", size = 0.5),
+  			panel.grid.minor.y = element_line(colour = "grey", size = 0.1),
+  			panel.border = element_rect(colour = "black", fill = NA)
+  			)
+	) 
+```
+
+```{r}
+# non-truncated y-axis version. Analysis uses the whole dataset
+q + ylim(0, 4) 
+```
+
+To read these boxplots:
+
+1. The y-axis is the final area (cm^2^) of the colony inoculated onto the plate (the notional 'invader')
+
+2. On control media (left 2 columns), Soft-bug colonies (blue) grow bigger (more quickly) than do _Streptomyces_ colonies (orange). 
+
+3. However, on _Pseudonocardia_-infused media (Ps1, Ps2), _Streptomyces_ colonies (orange) grow more quickly than do soft-bug colonies (blue).
+
+4. The 17 _Pseudonocardia_ colonies (Ps.strain) used to infuse the media can be usefully divided into two 16S genotypes (Ps1 n = 6, Ps2 n = 11). Growth rates of _Streptomyces_ and softbugs appear lower on the Ps2 infusions (i.e. Ps2 appears to be a more effective inhibitor in general).
+
+5. There are fewer Control datapoints because this represents only one kind of media, whereas the _Pseudonocardia_ (Ps1 and Ps2) treatment represents 17 Ps lineages. 
+
+6. The empty triangles are all from Softbug strain 18, clearly demonstrating the existence of correlated residuals in the Inv.strain variable. 
+
+
+Ths dataset is used to choose strains for the pairwise competition experiment (Fig 2)
+```{r assay4 summary data tables, eval=FALSE}
+(assay4.1 <- assay3 %>% group_by(Ps.genotype, Invader) %>% summarise(median.Invasion.score=round(median(Invasion.score), 2)))
+
+assay4.2 <- assay3 %>% group_by(Ps.genotype, Invader, Inv.strain) %>% summarise(median.Invasion.score=round(median(Invasion.score), 2))
+assay4.2 <- assay4.2 %>% arrange(Ps.genotype, Invader, median.Invasion.score)
+
+assay4.3 <- assay3 %>% group_by(Ps.genotype, Ps.strain, Invader, Inv.strain) %>% summarise(median.Invasion.score=round(median(Invasion.score), 2))
+
+# write.table(assay4.1, file = "assay4.1.tsv", quote = FALSE, sep = "\t") # use this to choose summary pairs for the competition experiment
+# write.table(assay4.2, file = "assay4.2.tsv", quote = FALSE, sep = "\t") # use this to choose summary pairs for the competition experiment
+# write.table(assay4.3, file = "assay4.3.tsv", quote = FALSE, sep = "\t") # use this to choose summary pairs for the competition experiment
+
+rm(assay4.1, assay4.2, assay4.3)
+```
+
+
+## Start of analysis. 
+
+There are two potential random factors:  
+
+1. _Pseudonocardia_ strains: `Ps.strain` (17 levels: A-S) 
+2. Invader strains: `Inv.strain` (20 levels: labeled 1-20). 1-10 are _Streptomyces_ strains, 11-20 are Softbug strains
+
+There are 3 Plate replicates for each combination of Ps.strain and Inv.strain, and each of the 20 Inv.strains is tested against each of the 17 Ps.strains. Some complexity:  not all inoculations were scorable, so were omitted. This is a fully crossed but somewhat imbalanced experiment
+
+There are 2 fixed factors:  
+
+1. Pseuonocardia genotype: `Ps.genotype` (Ps1, Ps2).
+2. Invader type: `Invader` (softbugs, _Streptomyces_)
+
+Finally, the response variable is:
+
+1. Mean colony area (cm^2^): `Invasion.score`
+
+Construct a full model and test for an interaction effect of medium (Ps.genotype) and Invader (_Streptomyces_ and Softbugs) and also test for correlated residuals in each of the potential random factors
+
+```{r Check for correlated residuals}
+M1 <- lm(Invasion.score~Invader*Ps.genotype, data=assay3)
+E1 <- rstandard(M1)
+plot(E1 ~ assay3$Ps.strain); abline(0,0) # T,P,Q strains either mostly above or below 0, demonstrating correlated residuals for some strains
+plot(E1 ~ assay3$Inv.strain); abline(0,0) # 11,14,16,17,18,19,20,4,5,9,10 either mostly above or below 0, demonstrating correlated residuals for some strains. recall that 11-20 are softbugs and 1-10 are _Streptomyces_
+rm(M1)
+rm(E1)
+```
+
+Thus, we use a model with random factors. In particular, note that Softbug strain 18 has a high growth rate, which we saw in the boxplot (empty triangle points)
+
+```{r}
+# with interaction effect
+M1 <- lmer(Invasion.score ~ Invader * Ps.genotype + (1|Ps.strain/Plate) + (1|Inv.strain), data=assay3, REML = FALSE)
+# without interaction effect
+M2 <- lmer(Invasion.score ~ Invader + Ps.genotype + (1|Ps.strain/Plate) + (1|Inv.strain), data=assay3, REML = FALSE)
+
+anova(M1, M2) # highly significant interaction effect:  p = 1.102e-10
+AIC(M1, M2) # AIC difference >> 2, and the model with the interaction effect has a much lower AIC:  263.39
+```
+
+Estimate parameter values
+```{r}
+M3 <- lmer(Invasion.score ~ Invader * Ps.genotype + (1|Ps.strain/Plate) + (1|Inv.strain), data=assay3, REML = TRUE)
+summary(M3)
+```
+
+There is a highly significant interaction effect. Softbugs grow more quickly on the Control medium, but Streptomyces grow more quickly on both the Ps1- and Ps2-infused medias.
+
+Random factors:
+```{r}
+plot(assay3$Ps.strain, resid(M2), xlab="Ps.strain", ylab="Residuals"); abline(0,0)
+plot(assay3$Inv.strain, resid(M2), xlab="Inv.strain", ylab="Residuals"); abline(0,0)
+plot(assay3$Plate, resid(M2), xlab="Inv.strain", ylab="Residuals"); abline(0,0)
+```
+
+The corelated residuals have gone away, as expected, although Inv.strain 18 has greater variance than the other strains. 
+
+### Effect of Ps1 vs Ps2
+
+From the Andersen et al. (2013) results, we hypothesised that Ps2 would be a stronger growth suppressor than is Ps1.
+
+Remove the Control level and test again for a significant main effect of Ps.genotype (Ps1 vs Ps2).
+```{r}
+assay4 <- assay3 %>% dplyr::filter(Ps.genotype != "Control")
+assay4$Ps.genotype <- fct_drop(assay4$Ps.genotype)
+
+M5 <- lmer(Invasion.score ~ Invader + Ps.genotype + (1|Ps.strain/Plate) + (1|Inv.strain), data=assay4, REML = FALSE)
+M6 <- lmer(Invasion.score ~ Invader + (1|Ps.strain) + (1|Inv.strain/Plate), data=assay4, REML = FALSE)
+
+anova(M5, M6)
+```
+
+
+Ps.genoptype is highly significant (p = 7.252e-07):  growth is different between the Ps1 and Ps2-infused media
+
+Now estimate parameter value
+```{r}
+M7 <- lmer(Invasion.score ~ Invader + Ps.genotype + (1|Ps.strain/Plate) + (1|Inv.strain), data=assay4, REML = TRUE)
+summary(M7)
+```
+
+Growth rate is lower on Ps2 (-0.16489)
+
+
+
+
+

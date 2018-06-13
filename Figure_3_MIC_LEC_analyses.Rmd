@@ -1,0 +1,113 @@
+---
+title: "Figure 3  Analyses of MIC and LEC scores"
+author: "Douglas Yu"
+date: "05 June 2018"
+output: html_document
+---
+## Packages
+```{r, message=FALSE}
+# rm(list=ls())
+library(tidyverse)
+library(readxl)
+library(cowplot)
+library(knitr)
+library(ggbeeswarm)
+library(RColorBrewer)
+library(ggthemes)
+library(envDocument)
+env_doc("table", git = FALSE)
+```
+
+```{r}
+datafile <- "Figure_3_MIC_LEC_analyses_DataSheet_20180531.xlsx"
+datasheet <- "Sheet1"
+```
+
+## Dataset 1: MIC and LEC scores
+```{r Streptomyces dataset}
+assay1 <- read_excel(datafile, datasheet, na = "NA")
+assay1 <- assay1 %>% dplyr::select(Strain, Strep_Soft, Antibiotic, MIC_score, LEC_score, Notes)
+assay1 <- assay1 %>% dplyr::filter(is.na(Notes)) %>% dplyr::select(-Notes)
+assay1$Strain <- as_factor(assay1$Strain)
+assay1$Strep_Soft <- as_factor(assay1$Strep_Soft)
+assay1$Antibiotic <- as_factor(assay1$Antibiotic)
+tbl_df(assay1) # should have 155 rows and 5 cols
+
+xtabs(~ Strain + Strep_Soft, assay1) # to see experimental design
+```
+
+
+```{r stripchart of results}
+colorvec <- brewer.pal(3,"RdBu")
+colorvec <- c(colorvec[3], colorvec[1], colorvec[2])
+
+mic <- ggplot(assay1, aes(x = Strep_Soft, y = MIC_score))
+lec <- ggplot(assay1, aes(x = Strep_Soft, y = LEC_score)) 
+
+(micplot <- mic 
+	+ geom_boxplot(size = .5, outlier.shape = NA, width = 0.3, aes(fill = assay1$Strep_Soft), notch = TRUE) 
+	# + geom_jitter(width = 0.05, cex = .8)
+    + geom_quasirandom()
+	+ scale_shape_manual(values = c(16, 2)) 
+	+ labs(y = expression("Minimum Inhibitory Concentration (MIC) score")) 
+	+ scale_fill_manual(values = colorvec) 
+    + theme(axis.title.y = element_text(size = 14), 
+  			axis.title.x = element_blank(), 
+  			legend.position='none', 
+  			panel.background = element_rect(fill = "white"), 
+  			panel.grid.major.y = element_line(colour = "grey", size = 0.5),
+  			panel.grid.minor.y = element_line(colour = "grey", size = 0.1),
+  			panel.border = element_rect(colour = "black", fill = NA)
+  			)
+    )
+
+(lecplot <- lec 
+	+ geom_boxplot(size = .5, outlier.shape = NA, width = 0.3, aes(fill = assay1$Strep_Soft), notch = TRUE) 
+	# + geom_jitter(width = 0.05, cex = .8)
+    + geom_quasirandom()
+	+ scale_shape_manual(values = c(16, 2)) 
+	+ labs(y = expression("Lowest Inhibitory Concentration (LEC) score")) 
+	+ scale_fill_manual(values = colorvec) 
+    + theme(axis.title.y = element_text(size = 14), 
+  			axis.title.x = element_blank(), 
+  			legend.position='none', 
+  			panel.background = element_rect(fill = "white"), 
+  			panel.grid.major.y = element_line(colour = "grey", size = 0.5),
+  			panel.grid.minor.y = element_line(colour = "grey", size = 0.1),
+  			panel.border = element_rect(colour = "black", fill = NA)
+  			)
+    )
+
+plot_grid(micplot, lecplot, labels = c("A", "B"))
+```
+
+```{r statistics}
+median(assay1$MIC_score[assay1$Strep_Soft == "Antibiotic-producers"])
+median(assay1$MIC_score[assay1$Strep_Soft == "Non-producers"])
+
+median(assay1$LEC_score[assay1$Strep_Soft == "Antibiotic-producers"])
+median(assay1$LEC_score[assay1$Strep_Soft == "Non-producers"])
+
+wilcox.test(assay1$MIC_score ~ assay1$Strep_Soft)
+wilcox.test(assay1$LEC_score ~ assay1$Strep_Soft)
+```
+
+```{r summarise by Strain}
+assay2 <- assay1 %>% group_by(Strain) %>% 
+    summarise(Strep_Soft = first(Strep_Soft), 
+                 mean_MIC = mean(MIC_score),
+                 mean_LEC = mean(LEC_score)
+    )
+
+wilcox.test(assay2$mean_MIC ~ assay2$Strep_Soft)
+wilcox.test(assay2$mean_LEC ~ assay2$Strep_Soft)
+```
+
+To read these results:
+
+1. Antibiotic-producers have higher MIC and LEC scores.
+
+2. We conservatively take the mean MIC and LEC scores (across all antibiotics) for each Antibiotic-producer and each Non-producer strain, reducing the dataset from n = 155 to n = 20:  assay2
+
+3.  We then apply a Wilcoxon 2-sided test of equality of means.  Mean MIC scores and LEC scores are significantly higher for Antibiotic-producers.  
+

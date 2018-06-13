@@ -1,0 +1,193 @@
+---
+title: "Analysis of microbiome competition experiment - Figure 2"
+author: "Douglas Yu"
+date: "05 June 2018"
+output: html_document
+---
+
+## Housekeeping
+```{r, message=FALSE}
+# rm(list=ls())
+library(lme4)
+library(tidyverse)
+library(readxl)
+library(forcats)
+library(sjPlot)
+library(RColorBrewer)
+library(envDocument)
+env_doc("table", git = FALSE)
+```
+
+Variables
+```{r}
+datafile <- "Figure_2_Competition_analyses_DataSheet_20180301.xlsx"
+```
+
+Import data and format
+```{r Import data and format}
+assay <- read_excel(file.path(datafile), sheet = "Sheet1", na = "NA", col_types = c("text", "text", "text", "text"))
+tbl_df(assay) # should have 250 rows and 4 cols
+assay$Strep_strain <- as_factor(assay$Strep_strain) # Streptomyces strain
+assay$Softbug_strain <- as_factor(assay$Softbug_strain) # Softbug is our slang term for non-antibiotic-producer bacterial strains
+assay <- assay %>% dplyr::filter((Strep_outcome != "Ambiguous")) # remove one outcome that could not be scored non-ambiguously
+assay$medium <- as_factor(assay$medium)
+assay$Strep_outcome <- as_factor(assay$Strep_outcome)
+
+assay$Strep_outcome <- fct_collapse(assay$Strep_outcome,
+  Draw = c("Draws"),
+  Win = c("Wins"),
+  Loss = c("Loses")
+)
+
+levels(assay$Strep_outcome)
+
+assay$medium2 <- fct_collapse(assay$medium, 
+        Ps1_infused_media = c("Ae707_Ps1"),
+		Ps2_infused_media = c("Ae717_Ps2"),
+		Control = c("Ctrl")
+)
+
+levels(assay$medium2)
+
+assay <- assay %>% dplyr::select(medium, medium2, Strep_strain, Softbug_strain, Strep_outcome) %>% arrange(medium, Strep_outcome)
+
+assay # should have 249 rows and 5 cols
+
+# create numeric versions of the competition outcomes
+assay$Strep_outcomeLW <- NA
+assay$Strep_outcomeLW[assay$Strep_outcome=="Win"] <- 1
+assay$Strep_outcomeLW[assay$Strep_outcome=="Loss"] <- 0
+assay$Strep_outcomeLW[assay$Strep_outcome=="Draw"] <- NA
+assay$Strep_outcomeLW <- as.numeric(assay$Strep_outcomeLW)
+```
+
+Separate into the two experiments
+```{r}
+assay8 <- assay %>% filter(Strep_strain == "Strep_8")
+assay8$medium <- assay8$medium %>% fct_drop()
+assay8$medium2 <- assay8$medium2 %>% fct_drop()
+assay8$Strep_strain <- assay8$Strep_strain %>% fct_drop()
+
+xtabs(~ Softbug_strain + medium, assay8)
+
+assay2 <- assay %>% filter(Strep_strain == "Strep_2")
+assay2$medium <- assay2$medium %>% fct_drop()
+assay2$medium2 <- assay2$medium2 %>% fct_drop()
+assay2$Strep_strain <- assay2$Strep_strain %>% fct_drop()
+
+xtabs(~ Softbug_strain + medium, assay2)
+
+```
+
+Summary barplots
+```{r}
+colorvec <- brewer.pal(3,"RdBu")
+colorvec <- c(colorvec[1], colorvec[3], colorvec[2])
+
+assay8_table <-  with(assay8, table(Strep_outcome, medium2))
+assay8_table
+
+assay2_table <-  with(assay2, table(Strep_outcome, medium2))
+assay2_table
+
+# formatted for publication
+par(mfrow=c(1,2))
+barplot(assay8_table, beside=T, main = expression(paste("Competitive outcome for ", italic('Streptomyces'), " strain 8")), names.arg = c("Ps1-infused media", "Control media"), ylab="Frequency", col=colorvec, ylim = c(0, 80))
+legend("topleft",c("Win", "Loss", "Draw"), fill=colorvec, horiz = TRUE)
+barplot(assay2_table, beside=T, main = expression(paste("Competitive outcome for ", italic('Streptomyces'), " strain 2")), names.arg = c("Ps2-infused media", "Control media"), col=colorvec, ylim = c(0, 80))
+legend("topleft",c("Win", "Loss", "Draw"), fill=colorvec, horiz = TRUE)
+par(mfrow=c(1,1))
+```
+
+Remove the Draw outcomes for downstream analysis (and new barplots)
+```{r}
+assay2.2 <- assay2 %>% dplyr::filter(Strep_outcome != "Draw")
+assay2.2$Strep_outcome <- assay2.2$Strep_outcome %>% fct_drop()
+
+assay8.2 <- assay8 %>% dplyr::filter(Strep_outcome != "Draw")
+assay8.2$Strep_outcome <- assay8.2$Strep_outcome %>% fct_drop()
+
+assay2.2_table <-  with(assay2.2, table(Strep_outcome, medium2))
+assay2.2_table
+
+assay8.2_table <-  with(assay8.2, table(Strep_outcome, medium2))
+assay8.2_table
+
+colorvec2 <- c(colorvec[1], colorvec[2])
+
+par(mfrow=c(1,2))
+barplot(assay8.2_table, beside=T, main="Strepto Strain 8; Ae707_Ps1 medium", ylab="Frequency", xlab = "Medium",col=colorvec2)
+legend("topleft",c("win", "loss"), fill=colorvec2)
+barplot(assay2.2_table, beside=T, main="Strepto Strain 2; Ae717_Ps2 medium", ylab="Frequency", xlab = "Medium", col=colorvec2, ylim = c(0, 80))
+legend("topright",c("win", "loss"),fill=colorvec2)
+par(mfrow=c(1,1))
+```
+
+# Start of analysis.  First analyse naively without random factor grouping the non-producer (softbug) strains
+
+Highly significant interaction effect:  growth medium has a strong effect on competitive outcomes, for both Steptomyces strains
+```{r}
+model2.2<-chisq.test(assay2.2_table, correct = F) # basic chi-square test
+model2.2$expected
+model2.2
+
+model8.2<-chisq.test(assay8.2_table, correct = F) # basic chi-square test
+model8.2$expected
+model8.2
+```
+
+Rerun the above but as a GLM (without any random factors). Again, highly significant interaction effect
+```{r}
+M0.2 <- glm(Strep_outcomeLW ~ 1, family = binomial, data = assay2.2)
+M1.2 <- glm(Strep_outcomeLW ~ medium2, family = binomial, data = assay2.2)
+summary(M0.2)
+summary(M1.2)
+anova(M0.2, M1.2, test = "Chi")  
+AIC(M0.2, M1.2)
+
+M0.8 <- glm(Strep_outcomeLW ~ 1, family = binomial, data = assay8.2)
+M1.8 <- glm(Strep_outcomeLW ~ medium2, family = binomial, data = assay8.2)
+summary(M0.8)
+summary(M1.8)
+anova(M0.8, M1.8, test = "Chi")  
+AIC(M0.8, M1.8)
+```
+
+However, there are correlated residuals in the model without a random factor, by Softbug_strain
+```{r}
+E1.2 <- rstandard(M1.2)
+E1.8 <- rstandard(M1.8)
+par(mfrow=c(2, 1))
+plot(E1.2 ~ assay2.2$Softbug_strain); abline(0,0) 
+plot(E1.8 ~ assay8.2$Softbug_strain); abline(0,0) 
+par(mfrow=c(1, 1))
+# rm(M1)
+# rm(E1)
+```
+
+Now the proper test including a random factor as intercept:  Softbug_strain (i.e. the non-antibiotic-producer strains, of which there are 10)
+
+Highly significant interaction effect.  p = 2.2e-16
+```{r}
+M2 <- glmer(Strep_outcomeLW ~ 1 + (1|Softbug_strain), family = binomial, data = assay2.2)
+M3 <- glmer(Strep_outcomeLW ~ medium2 + (1|Softbug_strain), family = binomial, data = assay2.2)
+summary(M3)
+anova(M2, M3) # p = 2.2e-16
+fixef(M3) # fewer wins (1s) on Control media
+plot_model(M3, type = "re")
+
+M4 <- glmer(Strep_outcomeLW ~ 1 + (1|Softbug_strain), family = binomial, data = assay8.2)
+M5 <- glmer(Strep_outcomeLW ~ medium2 + (1|Softbug_strain), family = binomial, data = assay8.2)
+summary(M5)
+anova(M4, M5) # p = 2.2e-16
+fixef(M5) # fewer wins (1s) on Control media
+plot_model(M5, type = "re")
+```
+
+Correlated residuals have largely disappeared
+```{r}
+par(mfrow=c(2, 1))
+plot(assay2.2$Softbug_strain, resid(M2), xlab="Softbug_strain", ylab="Residuals"); abline(0,0)
+plot(assay8.2$Softbug_strain, resid(M5), xlab="Softbug_strain", ylab="Residuals"); abline(0,0)
+par(mfrow=c(1,1))
+```
