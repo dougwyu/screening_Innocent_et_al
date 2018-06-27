@@ -11,6 +11,7 @@ Tabitha Innocent1\*†, Neil Holmes2*, Mahmoud Al Bassam2††, Morten Schiott1
 5 Department of Molecular Microbiology, John Innes Centre, Norwich Research Park, Norwich, Norfolk NR47UH United Kingdom
 6 State Key Laboratory of Genetic Resources and Evolution, Kunming Institute of Zoology, Chinese Academy of Sciences, Kunming Yunnan, 650223 China
 
-* Joint first author
+\* Joint first author
+
 † Correspondence authors:  tabitha.innocent@bio.ku.dk, m.hutchings@uea.ac.uk, jjboomsma@bio.ku.dk, dougwyu@mac.com
 †† Current address: Division of Host-Microbe Systems & Therapeutics, Department of Pediatrics, University of California, San Diego, La Jolla, California 92093, USA
