@@ -24,7 +24,7 @@ datafile <- "Figure_3_LEC_MIC_analyses_DataSheet_20180626.xlsx"
 datasheet <- "Sheet1"
 ```
 
-## Dataset 1: MIC and LEC scores
+## Dataset 1: LEC and MIC scores
 ```{r Streptomyces dataset}
 assay1 <- read_excel(datafile, datasheet, na = "NA")
 assay1 <- assay1 %>% dplyr::select(Strain, Strep_Soft, Antibiotic, MIC_score, LEC_score, Notes)
