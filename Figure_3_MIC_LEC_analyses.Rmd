@@ -15,11 +15,12 @@ library(ggbeeswarm)
 library(RColorBrewer)
 library(ggthemes)
 library(envDocument)
+library(broom)
 env_doc("table", git = FALSE)
 ```
 
 ```{r}
-datafile <- "Figure_3_MIC_LEC_analyses_DataSheet_20180531.xlsx"
+datafile <- "Figure_3_MIC_LEC_analyses_DataSheet_20180626.xlsx"
 datasheet <- "Sheet1"
 ```
 
@@ -27,11 +28,11 @@ datasheet <- "Sheet1"
 ```{r Streptomyces dataset}
 assay1 <- read_excel(datafile, datasheet, na = "NA")
 assay1 <- assay1 %>% dplyr::select(Strain, Strep_Soft, Antibiotic, MIC_score, LEC_score, Notes)
-assay1 <- assay1 %>% dplyr::filter(is.na(Notes)) %>% dplyr::select(-Notes)
+assay1 <- assay1 %>% dplyr::filter(is.na(Notes) | Notes != "Contamination") %>% dplyr::select(-Notes)
 assay1$Strain <- as_factor(assay1$Strain)
 assay1$Strep_Soft <- as_factor(assay1$Strep_Soft)
 assay1$Antibiotic <- as_factor(assay1$Antibiotic)
-tbl_df(assay1) # should have 155 rows and 5 cols
+tbl_df(assay1) # should have 235 rows and 5 cols
 
 xtabs(~ Strain + Strep_Soft, assay1) # to see experimental design
 ```
@@ -43,23 +44,6 @@ colorvec <- c(colorvec[3], colorvec[1], colorvec[2])
 
 mic <- ggplot(assay1, aes(x = Strep_Soft, y = MIC_score))
 lec <- ggplot(assay1, aes(x = Strep_Soft, y = LEC_score)) 
-
-(micplot <- mic 
-	+ geom_boxplot(size = .5, outlier.shape = NA, width = 0.3, aes(fill = assay1$Strep_Soft), notch = TRUE) 
-	# + geom_jitter(width = 0.05, cex = .8)
-    + geom_quasirandom()
-	+ scale_shape_manual(values = c(16, 2)) 
-	+ labs(y = expression("Minimum Inhibitory Concentration (MIC) score")) 
-	+ scale_fill_manual(values = colorvec) 
-    + theme(axis.title.y = element_text(size = 14), 
-  			axis.title.x = element_blank(), 
-  			legend.position='none', 
-  			panel.background = element_rect(fill = "white"), 
-  			panel.grid.major.y = element_line(colour = "grey", size = 0.5),
-  			panel.grid.minor.y = element_line(colour = "grey", size = 0.1),
-  			panel.border = element_rect(colour = "black", fill = NA)
-  			)
-    )
 
 (lecplot <- lec 
 	+ geom_boxplot(size = .5, outlier.shape = NA, width = 0.3, aes(fill = assay1$Strep_Soft), notch = TRUE) 
@@ -78,36 +62,86 @@ lec <- ggplot(assay1, aes(x = Strep_Soft, y = LEC_score))
   			)
     )
 
-plot_grid(micplot, lecplot, labels = c("A", "B"))
+(micplot <- mic 
+	+ geom_boxplot(size = .5, outlier.shape = NA, width = 0.3, aes(fill = assay1$Strep_Soft), notch = TRUE) 
+	# + geom_jitter(width = 0.05, cex = .8)
+    + geom_quasirandom()
+	+ scale_shape_manual(values = c(16, 2)) 
+	+ labs(y = expression("Minimum Inhibitory Concentration (MIC) score")) 
+	+ scale_fill_manual(values = colorvec) 
+    + theme(axis.title.y = element_text(size = 14), 
+  			axis.title.x = element_blank(), 
+  			legend.position='none', 
+  			panel.background = element_rect(fill = "white"), 
+  			panel.grid.major.y = element_line(colour = "grey", size = 0.5),
+  			panel.grid.minor.y = element_line(colour = "grey", size = 0.1),
+  			panel.border = element_rect(colour = "black", fill = NA)
+  			)
+    )
+
+plot_grid(lecplot, micplot, labels = c("A", "B"))
 ```
 
 ```{r statistics}
+levels(assay1$Strep_Soft)
 median(assay1$MIC_score[assay1$Strep_Soft == "Antibiotic-producers"])
 median(assay1$MIC_score[assay1$Strep_Soft == "Non-producers"])
+median(assay1$MIC_score[assay1$Strep_Soft == "Resident Non-producers"])
 
 median(assay1$LEC_score[assay1$Strep_Soft == "Antibiotic-producers"])
 median(assay1$LEC_score[assay1$Strep_Soft == "Non-producers"])
-
-wilcox.test(assay1$MIC_score ~ assay1$Strep_Soft)
-wilcox.test(assay1$LEC_score ~ assay1$Strep_Soft)
+median(assay1$LEC_score[assay1$Strep_Soft == "Resident Non-producers"])
 ```
 
-```{r summarise by Strain}
-assay2 <- assay1 %>% group_by(Strain) %>% 
+```{r compare producers to nonproducers}
+assay2 <- assay1 %>% dplyr::filter(Strep_Soft != "Resident Non-producers")
+
+# summarise by Strain
+assay2 <- assay2 %>% group_by(Strain) %>% 
     summarise(Strep_Soft = first(Strep_Soft), 
                  mean_MIC = mean(MIC_score),
                  mean_LEC = mean(LEC_score)
     )
 
-wilcox.test(assay2$mean_MIC ~ assay2$Strep_Soft)
-wilcox.test(assay2$mean_LEC ~ assay2$Strep_Soft)
+assay2$Strep_Soft <- fct_drop(assay2$Strep_Soft) # drop unused factor level
+levels(assay2$Strep_Soft) # confirm
+
+mod1 <- wilcox.test(assay2$mean_MIC ~ assay2$Strep_Soft)
+(mod1tidy <- tidy(mod1))
+mod2 <- wilcox.test(assay2$mean_LEC ~ assay2$Strep_Soft)
+(mod2tidy <- tidy(mod2))
+pvalues <- c(mod1tidy$p.value, mod2tidy$p.value)
+p.adjust(pvalues, "fdr")
+```
+
+```{r compare producers to resident nonproducers}
+assay3 <- assay1 %>% dplyr::filter(Strep_Soft != "Non-producers")
+
+# summarise by Strain
+assay3 <- assay3 %>% group_by(Strain) %>% 
+    summarise(Strep_Soft = first(Strep_Soft), 
+                 mean_MIC = mean(MIC_score),
+                 mean_LEC = mean(LEC_score)
+    )
+
+assay3$Strep_Soft <- fct_drop(assay3$Strep_Soft) # drop unused factor level
+levels(assay3$Strep_Soft) # confirm
+
+mod1 <- wilcox.test(assay3$mean_MIC ~ assay3$Strep_Soft)
+(mod1tidy <- tidy(mod1))
+mod2 <- wilcox.test(assay3$mean_LEC ~ assay3$Strep_Soft)
+(mod2tidy <- tidy(mod2))
+pvalues <- c(mod1tidy$p.value, mod2tidy$p.value)
+p.adjust(pvalues, "fdr")
 ```
 
 To read these results:
 
-1. Antibiotic-producers have higher MIC and LEC scores.
+1. Antibiotic-producers have higher MIC and LEC scores than do Non-producers, especially for LEC scores, which is the minimum concentration needed to observe an inhibitory effect.
 
-2. We conservatively take the mean MIC and LEC scores (across all antibiotics) for each Antibiotic-producer and each Non-producer strain, reducing the dataset from n = 155 to n = 20:  assay2
+2. We conservatively average the mean MIC and LEC scores over all antibiotics for each Antibiotic-producer and Non-producer strain, reducing the dataset from n = 155 (assay1) to n = 20 (assay2)
 
-3.  We then apply a Wilcoxon 2-sided test of equality of means.  Mean MIC scores and LEC scores are significantly higher for Antibiotic-producers.  
+3. We then apply a Wilcoxon 2-sided test of equality of means.  Mean MIC scores and LEC scores are significantly higher for Antibiotic-producers.  These differences hold up after adjusting for two tests (p.adjust, method = false discovery rate).
+
+4. Although it's not really necessary, for completeness, I test for mean differences between Antibiotic-producers and Resident Non-producers (assay3), and as is obvious from the boxplot, there is no difference. 
 
