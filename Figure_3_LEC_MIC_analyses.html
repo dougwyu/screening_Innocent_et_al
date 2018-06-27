@@ -243,7 +243,7 @@ env_doc(&quot;table&quot;, git = FALSE)</code></pre>
 ## Name       Value                                                                                                                          
 ## ---------  -------------------------------------------------------------------------------------------------------------------------------
 ## Path       /Users/Negorashi2011/Dropbox/Working_docs/Hutchings/Tabitha Innocent/Screening_paper/S4_20180605/Figure_3_LEC_MIC_analyses.Rmd 
-## Modified   2018-06-27 09:01:52</code></pre>
+## Modified   2018-06-27 09:06:54</code></pre>
 <pre class="r"><code>datafile &lt;- &quot;Figure_3_LEC_MIC_analyses_DataSheet_20180626.xlsx&quot;
 datasheet &lt;- &quot;Sheet1&quot;</code></pre>
 </div>
@@ -428,10 +428,10 @@ p.adjust(pvalues, &quot;fdr&quot;)</code></pre>
 <pre><code>## [1] 0.4432787 0.4432787</code></pre>
 <p>To read these results:</p>
 <ol style="list-style-type: decimal">
-<li><p>Antibiotic-producers have higher MIC and LEC scores than do Non-producers, especially for LEC scores, which is the minimum concentration needed to observe an inhibitory effect.</p></li>
-<li><p>We conservatively average the mean MIC and LEC scores over all antibiotics for each Antibiotic-producer and Non-producer strain, reducing the dataset from n = 155 (assay1) to n = 20 (assay2)</p></li>
-<li><p>We then apply a Wilcoxon 2-sided test of equality of means. Mean MIC scores and LEC scores are significantly higher for Antibiotic-producers. These differences hold up after adjusting for two tests (p.adjust, method = false discovery rate).</p></li>
-<li><p>Although it’s not really necessary, for completeness, I test for mean differences between Antibiotic-producers and Resident Non-producers (assay3), and as is obvious from the boxplot, there is no difference.</p></li>
+<li><p>Antibiotic-producers have higher LEC and MIC scores than do Non-producers, especially for LEC scores, which is the minimum concentration needed to observe an inhibitory effect.</p></li>
+<li><p>We conservatively average the mean LEC and MIC scores over all antibiotics for each Antibiotic-producer and Non-producer strain, reducing the dataset from n = 155 (assay1) to n = 20 (assay2)</p></li>
+<li><p>We then apply a Wilcoxon 2-sided test of equality of means. Mean LEC scores and MIC scores are significantly higher for Antibiotic-producers. These differences hold up after adjusting for two tests (p.adjust, method = false discovery rate).</p></li>
+<li><p>Although it’s not necessary, for completeness, I test for mean differences between Antibiotic-producers and Resident Non-producers (assay3), and as is obvious from the boxplot, there is no difference.</p></li>
 </ol>
 </div>
 
