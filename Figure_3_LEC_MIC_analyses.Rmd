@@ -84,13 +84,13 @@ plot_grid(lecplot, micplot, labels = c("A", "B"))
 
 ```{r statistics}
 levels(assay1$Strep_Soft)
-median(assay1$MIC_score[assay1$Strep_Soft == "Antibiotic-producers"])
-median(assay1$MIC_score[assay1$Strep_Soft == "Non-producers"])
-median(assay1$MIC_score[assay1$Strep_Soft == "Resident Non-producers"])
-
 median(assay1$LEC_score[assay1$Strep_Soft == "Antibiotic-producers"])
 median(assay1$LEC_score[assay1$Strep_Soft == "Non-producers"])
 median(assay1$LEC_score[assay1$Strep_Soft == "Resident Non-producers"])
+
+median(assay1$MIC_score[assay1$Strep_Soft == "Antibiotic-producers"])
+median(assay1$MIC_score[assay1$Strep_Soft == "Non-producers"])
+median(assay1$MIC_score[assay1$Strep_Soft == "Resident Non-producers"])
 ```
 
 ```{r compare producers to nonproducers}
