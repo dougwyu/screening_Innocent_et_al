@@ -1,7 +1,7 @@
 ---
-title: "Figure 3  Analyses of MIC and LEC scores"
+title: "Figure 3  Analyses of LEC and MIC scores"
 author: "Douglas Yu"
-date: "05 June 2018"
+date: "27 June 2018"
 output: html_document
 ---
 ## Packages
@@ -20,7 +20,7 @@ env_doc("table", git = FALSE)
 ```
 
 ```{r}
-datafile <- "Figure_3_MIC_LEC_analyses_DataSheet_20180626.xlsx"
+datafile <- "Figure_3_LEC_MIC_analyses_DataSheet_20180626.xlsx"
 datasheet <- "Sheet1"
 ```
 
