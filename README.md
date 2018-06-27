@@ -14,4 +14,5 @@ Tabitha Innocent1\*†, Neil Holmes2*, Mahmoud Al Bassam2††, Morten Schiott1
 \* Joint first author
 
 † Correspondence authors:  tabitha.innocent@bio.ku.dk, m.hutchings@uea.ac.uk, jjboomsma@bio.ku.dk, dougwyu@mac.com
+
 †† Current address: Division of Host-Microbe Systems & Therapeutics, Department of Pediatrics, University of California, San Diego, La Jolla, California 92093, USA
