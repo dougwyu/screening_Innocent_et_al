@@ -98,7 +98,7 @@ p <- ggplot(assay3, aes(x = Ps.genotype:Invader, y = Invasion.score))
 
 (q <- p + ylim(0, 2.5) # to have same y-range as Figure 1A
 	+ geom_boxplot(size = .5, outlier.shape = NA, width = 0.3, aes(fill = assay3$Invader)) 
-	+ geom_jitter(width = 0.05, cex = .5) 
+	+ geom_jitter(width = 0.05, cex = 1.5) 
 	+ scale_shape_manual(values = c(16, 2)) 
 	+ labs(y = expression("Growth score:  Mean colony area " ~ (cm^{2}))) 
 	# + scale_fill_brewer(type = "qual", palette = "Set3") # alternative color set
